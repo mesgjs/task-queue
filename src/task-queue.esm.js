@@ -9,10 +9,8 @@
  * Manages a queue of async operations to ensure FIFO execution
  */
 export class TaskQueue {
-	constructor () {
-		this.queue = new Set();
-		this.isShuttingDown = false;
-	}
+	#queue = new Set();
+	#shuttingDown = false;
 
 	/**
 	 * Serialize a new async task, executing in FIFO order
@@ -22,15 +20,15 @@ export class TaskQueue {
 	 * @returns {Promise} Promise that resolves with callback's return value
 	 */
 	add (callback) {
-		if (this.isShuttingDown) {
-			return Promise.reject(new Error('Shutting down'));
+		if (this.#shuttingDown) {
+			return Promise.reject('Shutting down');
 		}
 
 		const turn = Promise.withResolvers();
-		this.queue.add({ turn, callback });
+		this.#queue.add({ turn, callback });
 
 		// Start processing if this is the first item
-		if (this.queue.size === 1) {
+		if (this.#queue.size === 1) {
 			queueMicrotask(() => this._runQueue());
 		}
 
@@ -41,11 +39,12 @@ export class TaskQueue {
 	 * Cancel a queued task
 	 * Returns true if cancelled, false if not found
 	 */
-	cancel (callback) {
-		for (const entry of this.queue.values()) {
+	cancel (callback, { resolve, reject } = {}) {
+		for (const entry of this.#queue.values()) {
 			if (entry.callback === callback) {
-				this.queue.delete(entry);
-				entry.turn.reject(new Error('Cancelled'));
+				this.#queue.delete(entry);
+				if (resolve !== undefined) entry.turn.resolve(resolve);
+				else entry.turn.reject(reject !== undefined ? reject : 'Cancelled');
 				return true;
 			}
 		}
@@ -59,11 +58,11 @@ export class TaskQueue {
 	async _runQueue () {
 		let entry;
 		// deno-lint-ignore no-cond-assign
-		while (entry = this.queue.values().next().value) {
+		while (entry = this.#queue.values().next().value) {
 			const { turn, callback } = entry;
 
-			if (this.isShuttingDown) {
-				turn.reject(new Error('Shutting down'));
+			if (this.#shuttingDown) {
+				turn.reject('Shutting down');
 			} else {
 				try {
 					const result = await callback();
@@ -73,7 +72,7 @@ export class TaskQueue {
 				}
 			}
 
-			this.queue.delete(entry);
+			this.#queue.delete(entry);
 		}
 	}
 
@@ -82,13 +81,13 @@ export class TaskQueue {
 	 * Rejects all pending operations
 	 */
 	shutdown () {
-		this.isShuttingDown = true;
+		this.#shuttingDown = true;
 
 		// Reject all pending operations
-		for (const entry of this.queue) {
-			entry.turn.reject(new Error('Shutting down'));
+		for (const entry of this.#queue) {
+			entry.turn.reject('Shutting down');
 		}
-		this.queue.clear();
+		this.#queue.clear();
 	}
 
 	/**
@@ -96,7 +95,7 @@ export class TaskQueue {
 	 * @returns {number} Number of pending operations
 	 */
 	get size () {
-		return this.queue.size;
+		return this.#queue.size;
 	}
 }
 

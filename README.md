@@ -47,16 +47,19 @@ Queues an async function for execution.
 - **Returns**: Promise that resolves with the callback's return value
 - **Throws**: Rejects if the queue is shutting down
 
-### `cancel(callback)`
+### `cancel(callback, { resolve, reject })`
 
-Cancels a queued task.
+Cancels a queued task. By default, promises reject with `Cancelled`.
 
-- **Parameters**: `callback` - The callback function to cancel
+- **Parameters**:
+  - `callback` - The callback function to cancel
+  - `resolve` - The promise will resolve to this if not `undefined`
+  - `reject` - The promise will reject with this if not `undefined`
 - **Returns**: `true` if cancelled, `false` if not found
 
 ### `shutdown()`
 
-Shuts down the queue and rejects all pending operations.
+Shuts down the queue and rejects all pending operations with `Shutting down`.
 
 ### `size`
 
