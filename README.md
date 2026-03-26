@@ -22,12 +22,12 @@ import { TaskQueue } from 'https://cdn.jsdelivr.net/gh/mesgjs/task-queue/src/tas
 const queue = new TaskQueue();
 
 // Queue async tasks
-const result1 = await queue.task(async () => {
+const result1 = await queue.add(async () => {
   // Your async operation
   return 'result';
 });
 
-const result2 = await queue.task(async () => {
+const result2 = await queue.add(async () => {
   // This runs after result1 completes
   return 'another result';
 });
@@ -39,7 +39,7 @@ const result2 = await queue.task(async () => {
 
 Creates a new task queue instance.
 
-### `task(callback)`
+### `add(callback)` (alias `task`)
 
 Queues an async function for execution.
 
@@ -68,4 +68,4 @@ See [LICENSE](LICENSE) file for details.
 
 ## Copyright
 
-Copyright 2025 Kappa Computer Solutions, LLC and Brian Katzung
+Copyright 2025-2026 Kappa Computer Solutions, LLC and Brian Katzung

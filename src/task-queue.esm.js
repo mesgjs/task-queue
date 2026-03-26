@@ -1,7 +1,7 @@
 /**
  * TaskQueue - Minimalist async task queue/serializer
  *
- * Copyright 2025 Kappa Computer Solutions, LLC and Brian Katzung
+ * Copyright 2025-2026 Kappa Computer Solutions, LLC and Brian Katzung
  */
 
 /**
@@ -12,6 +12,29 @@ export class TaskQueue {
 	constructor () {
 		this.queue = new Set();
 		this.isShuttingDown = false;
+	}
+
+	/**
+	 * Serialize a new async task, executing in FIFO order
+	 * Returns a promise with the return value of the async callback
+	 * Rejects if shutting down
+	 * @param {Function} callback Async function to execute
+	 * @returns {Promise} Promise that resolves with callback's return value
+	 */
+	add (callback) {
+		if (this.isShuttingDown) {
+			return Promise.reject(new Error('Shutting down'));
+		}
+
+		const turn = Promise.withResolvers();
+		this.queue.add({ turn, callback });
+
+		// Start processing if this is the first item
+		if (this.queue.size === 1) {
+			queueMicrotask(() => this._runQueue());
+		}
+
+		return turn.promise;
 	}
 
 	/**
@@ -75,27 +98,7 @@ export class TaskQueue {
 	get size () {
 		return this.queue.size;
 	}
-
-	/**
-	 * Serialize an async task, executing in FIFO order
-	 * Returns a promise with the return value of the async callback
-	 * Rejects if shutting down
-	 * @param {Function} callback Async function to execute
-	 * @returns {Promise} Promise that resolves with callback's return value
-	 */
-	task (callback) {
-		if (this.isShuttingDown) {
-			return Promise.reject(new Error('Shutting down'));
-		}
-
-		const turn = Promise.withResolvers();
-		this.queue.add({ turn, callback });
-
-		// Start processing if this is the first item
-		if (this.queue.size === 1) {
-			queueMicrotask(() => this._runQueue());
-		}
-
-		return turn.promise;
-	}
 }
+
+// .task compatibility alias for .add
+TaskQueue.prototype.task = TaskQueue.prototype.add;
