@@ -25,7 +25,7 @@ export class TaskQueue {
 		}
 
 		const turn = Promise.withResolvers();
-		this.#queue.add({ turn, callback });
+		this.#queue.add({ turn, callback, running: false });
 
 		// Start processing if this is the first item
 		if (this.#queue.size === 1) {
@@ -36,12 +36,13 @@ export class TaskQueue {
 	}
 
 	/**
-	 * Cancel a queued task
+	 * Cancel a queued task (if it's not already running)
 	 * Returns true if cancelled, false if not found
 	 */
 	cancel (callback, { resolve, reject } = {}) {
 		for (const entry of this.#queue.values()) {
 			if (entry.callback === callback) {
+				if (entry.running) return false; // Too late to cancel
 				this.#queue.delete(entry);
 				if (resolve !== undefined) entry.turn.resolve(resolve);
 				else entry.turn.reject(reject !== undefined ? reject : 'Cancelled');
@@ -60,6 +61,7 @@ export class TaskQueue {
 		// deno-lint-ignore no-cond-assign
 		while (entry = this.#queue.values().next().value) {
 			const { turn, callback } = entry;
+			entry.running = true;
 
 			if (this.#shuttingDown) {
 				turn.reject('Shutting down');
